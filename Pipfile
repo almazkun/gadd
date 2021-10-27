@@ -5,8 +5,17 @@ name = "pypi"
 
 [packages]
 gitpython = "*"
+pytest = "*"
+isort = "*"
+autoflake = "*"
+black = "*"
+click = "*"
+flake8 = "*"
 
 [dev-packages]
 
 [requires]
 python_version = "3.8"
+
+[pipenv]
+allow_prereleases = true

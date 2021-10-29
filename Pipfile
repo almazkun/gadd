@@ -11,6 +11,8 @@ autoflake = "*"
 black = "*"
 click = "*"
 flake8 = "*"
+pylint = "*"
+vulture = "*"
 
 [dev-packages]
 

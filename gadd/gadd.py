@@ -5,6 +5,8 @@ import black
 import isort
 from flake8.api import legacy as flake8
 from git import Repo
+from pylint.lint import Run
+from vulture import Vulture
 
 
 def remove_unused_imports(filename):
@@ -43,29 +45,52 @@ def sort_imports(filename):
     Args:
         filename ([type]): [description]
     """
-    print("Applying Black")
+    print("Applying Black.")
     try:
-        black.main([filename])
-    except SystemExit:
-        pass
+        black.main([filename])  # pylint: disable=no-value-for-parameter
+    except SystemExit as e:
+        print(filename, e)
 
 
-def _format(filename):
-    """
-    flake8 --config=.flake8 $@
+def format_(filename):
+    def _check_flake8(filename):
+        """Same as: `flake8 --config=.flake8 $@`"""
+        print("Cheking with flake8.")
+        style_guide = flake8.get_style_guide(config=".flake8")
+        report = style_guide.check_files([filename])
+        e = report.get_statistics("E")
+        if e:
+            print("flake8 errors: ", report.get_statistics("E"))
+        else:
+            print("flake8 OK!")
 
-    pylint --rcfile=.pylintrc -f parseable -r n $@
+    def _check_pylint(filename):
+        """Same as: `pylint --rcfile=.pylintrc -f parseable -r n $@`"""
+        print("Cheking with pylint.")
+        Run(f"--rcfile=.pylintrc -f parseable -r n {filename}".split(" "), exit=False)
 
-    Args:
-        file ([type]): [description]
-    """
-    style_guide = flake8.get_style_guide(ignore=["E24", "W503"])
-    report = style_guide.check_files([filename])
-    print("flake8 errors: ", report.get_statistics("E"))
+    _check_flake8(filename)
+    _check_pylint(filename)
 
 
 def deadcode(file):
-    print(file)
+    """Same as: 
+        ```
+        vulture file whitelist.py \
+            --exclude directory \
+            --ignore-decorators "@decoratore.some",
+        ```
+
+    Args:
+        file (str): file name
+    """
+    print("Cheking with Vulture.")
+    vulture = Vulture(ignore_decorators=["@decoratore.some"])
+    vulture.scavenge(
+        [file, "whitelist.py"],
+        exclude=["directory"],
+    )
+    vulture.report()
 
 
 def staged_files():
@@ -81,17 +106,17 @@ def python_staged_files():
     return [file for file in staged_files() if file.endswith(".py")]
 
 
-def gadd(files):
+def gadd(file_list):
     print("#######################")
-    print("# Make it good again! #")
+    print("# Make it PEP8 again! #")
     print("#######################\n")
-    if files:
-        print(f"Found {len(files)} python files:\n")
-        for file in files:
+    if file_list:
+        print(f"Found {len(file_list)} python file(s):\n")
+        for file in file_list:
             print(f"\033[1m{file}\033[0m")
             remove_unused_imports(file)
             sort_imports(file)
-            _format(file)
+            format_(file)
             deadcode(file)
             print()
     else:

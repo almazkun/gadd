@@ -1,3 +1,4 @@
+import argparse
 import sys
 
 import autoflake
@@ -7,6 +8,8 @@ from flake8.api import legacy as flake8
 from git import Repo
 from pylint.lint import Run
 from vulture import Vulture
+
+__version__ = "0.1.0"
 
 
 def remove_unused_imports(filename):
@@ -126,5 +129,43 @@ def gadd(file_list):
     print("########")
 
 
+def _parse_args():
+    def csv(exclude):
+        return exclude.split(",")
+
+    usage = "%(prog)s [options] PATH [PATH ...]"
+    version = "gadd {}".format(__version__)
+    glob_help = "Patterns may contain glob wildcards (*, ?, [abc], [!abc])."
+    parser = argparse.ArgumentParser(prog="gadd", usage=usage)
+
+    parser.add_argument(
+        "--exclude",
+        metavar="PATTERNS",
+        type=csv,
+        help="Comma-separated list of paths to ignore (e.g.,"
+        ' "*settings.py,docs/*.py"). {glob_help} A PATTERN without glob'
+        " wildcards is treated as *PATTERN*.".format(**locals()),
+    )
+    parser.add_argument(
+        "--ignore-decorators",
+        metavar="PATTERNS",
+        type=csv,
+        help="Comma-separated list of decorators. Functions and classes using"
+        ' these decorators are ignored (e.g., "@app.route,@require_*").'
+        " {glob_help}".format(**locals()),
+    )
+    parser.add_argument(
+        "--ignore-names",
+        metavar="PATTERNS",
+        type=csv,
+        default=None,
+        help='Comma-separated list of names to ignore (e.g., "visit_*,do_*").'
+        " {glob_help}".format(**locals()),
+    )
+    parser.add_argument("--version", action="version", version=version)
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
+    args = _parse_args()
     gadd(python_staged_files())

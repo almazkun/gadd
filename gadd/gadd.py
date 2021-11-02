@@ -1,5 +1,9 @@
 import argparse
+import os
 import sys
+from contextlib import redirect_stderr
+from contextlib import redirect_stdout
+from io import StringIO
 
 import autoflake
 import black
@@ -12,6 +16,81 @@ from vulture import Vulture
 __version__ = "0.1.0"
 
 
+class Configs:
+    def __init__(self, parse_args: dict):
+        # {'exclude': None, 'ignore_decorators': None, 'ignore_names': None}
+        parse_args = vars(parse_args)
+        self.config_file_path = ".config"
+        self._exclude = (
+            parse_args.get("exclude") if parse_args.get("exclude") is not None else []
+        )
+        self._ignore_decorators = (
+            parse_args.get("ignore_decorators")
+            if parse_args.get("ignore_decorators") is not None
+            else []
+        )
+        self._ignore_names = (
+            parse_args.get("ignore_names")
+            if parse_args.get("ignore_names") is not None
+            else []
+        )
+
+        self.save_to_file()
+
+    @property
+    def read_form_file(self) -> dict:
+        d = {}
+        if os.path.exists(self.config_file_path):
+            with open(self.config_file_path, "r") as f:
+                for line in f.readlines():
+                    k, v = line.split("=")[0].strip(), line.split("=")[
+                        1
+                    ].strip().rsplit(", ")
+                    d[k] = v
+        return d
+
+    def save_to_file(self):
+        if os.path.exists(self.config_file_path):
+            configs = self.read_form_file
+            if configs:
+                kv = {
+                    "exclude": set(self._exclude + configs.get("exclude", [])),
+                    "ignore_decorators": set(
+                        self._ignore_decorators + configs.get("ignore_decorators", [])
+                    ),
+                    "ignore_names": set(
+                        self._ignore_names + configs.get("ignore_names", [])
+                    ),
+                }
+                with open(self.config_file_path, "w") as f:
+                    for k, v in kv.items():
+                        f.write(f"{k} = {', '.join(v)}\n")
+        else:
+            kv = {
+                "exclude": self._exclude,
+                "ignore_decorators": self._ignore_decorators,
+                "ignore_names": self._ignore_names,
+            }
+            with open(self.config_file_path, "w+") as f:
+                for k, v in kv.items():
+                    f.write(f"{k} = {', '.join(v)}\n")
+
+    def remove_from_file(self):
+        pass
+
+    @property
+    def exclude_paths(self) -> list:
+        return self.read_form_file.get("exclude", [])
+
+    @property
+    def ignore_decorators(self):
+        return self.read_form_file.get("ignore_decorators", [])
+
+    @property
+    def ignore_names(self):
+        return self.read_form_file.get("ignore_names", [])
+
+
 def remove_unused_imports(filename):
     """
     isort --recursive --force-single-line-imports --line-width 999 $LOC
@@ -20,7 +99,7 @@ def remove_unused_imports(filename):
     Args:
         filename ([type]): [description]
     """
-    print("Removing and sorting imports.")
+    print("\tRemoving and sorting imports.")
     isort.file(
         filename,
         **{
@@ -48,35 +127,56 @@ def sort_imports(filename):
     Args:
         filename ([type]): [description]
     """
-    print("Applying Black.")
-    try:
-        black.main([filename])  # pylint: disable=no-value-for-parameter
-    except SystemExit as e:
-        print(filename, e)
+    print("\tApplying Black.")
+    out, err = StringIO(), StringIO()
+    with redirect_stdout(out), redirect_stderr(err):
+        try:
+            black.main([filename])  # pylint: disable=no-value-for-parameter
+        except SystemExit as e:
+            print(filename, e)
+
+    out, err = out.getvalue(), err.getvalue()
+    print("\t\tReformated:", end=" ")
+    print(out.split(" ")[0])
 
 
 def format_(filename):
     def _check_flake8(filename):
         """Same as: `flake8 --config=.flake8 $@`"""
-        print("Cheking with flake8.")
+        print("\tCheking with flake8.")
         style_guide = flake8.get_style_guide(config=".flake8")
         report = style_guide.check_files([filename])
         e = report.get_statistics("E")
         if e:
-            print("flake8 errors: ", report.get_statistics("E"))
+            print("\t\tflake8 errors: ", report.get_statistics("E"))
         else:
-            print("flake8 OK!")
+            print("\t\tflake8 OK!")
 
     def _check_pylint(filename):
         """Same as: `pylint --rcfile=.pylintrc -f parseable -r n $@`"""
-        print("Cheking with pylint.")
-        Run(f"--rcfile=.pylintrc -f parseable -r n {filename}".split(" "), exit=False)
+        print("\tCheking with pylint.")
+        out, err = StringIO(), StringIO()
+        with redirect_stdout(out), redirect_stderr(err):
+            Run(
+                f"--rcfile=.pylintrc -f parseable -r n {filename}".split(" "),
+                exit=False,
+            )
+        out, err = out.getvalue(), err.getvalue()
+
+        for l in out.split("\n"):
+            if (
+                l
+                and not l.startswith("*")
+                and not l.startswith("-")
+                and not l.startswith("Your code has been rated")
+            ):
+                print(f"\t\t{l}")
 
     _check_flake8(filename)
     _check_pylint(filename)
 
 
-def deadcode(file):
+def deadcode(file, configs):
     """Same as: 
         ```
         vulture file whitelist.py \
@@ -87,13 +187,23 @@ def deadcode(file):
     Args:
         file (str): file name
     """
-    print("Cheking with Vulture.")
-    vulture = Vulture(ignore_decorators=["@decoratore.some"])
+    print("\tCheking with Vulture.")
+    vulture = Vulture(
+        ignore_names=configs.ignore_names, ignore_decorators=configs.ignore_decorators
+    )
     vulture.scavenge(
         [file, "whitelist.py"],
-        exclude=["directory"],
+        exclude=configs.exclude_paths,
     )
-    vulture.report()
+
+    out, err = StringIO(), StringIO()
+    with redirect_stdout(out), redirect_stderr(err):
+        vulture.report()
+    out, err = out.getvalue(), err.getvalue()
+
+    for l in out.split("\n"):
+        if l and not l.startswith("Cheking with Vulture."):
+            print(f"\t\t{l}")
 
 
 def staged_files():
@@ -109,21 +219,21 @@ def python_staged_files():
     return [file for file in staged_files() if file.endswith(".py")]
 
 
-def gadd(file_list):
+def gadd(file_list, configs: Configs = None):
     print("#######################")
     print("# Make it PEP8 again! #")
     print("#######################\n")
     if file_list:
-        print(f"Found {len(file_list)} python file(s):\n")
+        print(f"Found {len(file_list)} python file(s) staged:\n")
         for file in file_list:
             print(f"\033[1m{file}\033[0m")
             remove_unused_imports(file)
             sort_imports(file)
             format_(file)
-            deadcode(file)
+            deadcode(file, configs)
             print()
     else:
-        print("No python files found!\n")
+        print("No staged python files found!\n")
     print("########")
     print("# Exit #")
     print("########")
@@ -167,5 +277,4 @@ def _parse_args():
 
 
 if __name__ == "__main__":
-    args = _parse_args()
-    gadd(python_staged_files())
+    gadd(file_list=python_staged_files(), configs=Configs(_parse_args()))

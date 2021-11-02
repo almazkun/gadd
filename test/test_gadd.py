@@ -29,6 +29,12 @@ class TestGadd(TestCase):
 
 
 def not_used(file):
+    """Should be found bu vulture
+    d = {"ads": "asd", 'zxc': 'zxc'}
+    Args:
+        file ([type]): [description]
+    """
+    d = {"ads": "asd", "zxc": "zxc"}
     print(file)
 
 

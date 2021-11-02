@@ -1,6 +1,8 @@
-import argparse
 import os
 import sys
+from argparse import ArgumentParser
+from argparse import Namespace
+from configparser import ConfigParser
 from contextlib import redirect_stderr
 from contextlib import redirect_stdout
 from io import StringIO
@@ -15,42 +17,29 @@ from vulture import Vulture
 
 __version__ = "0.1.0"
 
+CONFIG_FILE_NAME = ".gadd"
+DEFAULT_SECTION = "GADD"
+
 
 class Configs:
-    def __init__(self, parse_args: dict):
+    def __init__(self, parse_args: Namespace):
         # {'exclude': None, 'ignore_decorators': None, 'ignore_names': None}
         parse_args = vars(parse_args)
-        self.config_file_path = ".config"
-        self._exclude = (
-            parse_args.get("exclude") if parse_args.get("exclude") is not None else []
-        )
-        self._ignore_decorators = (
-            parse_args.get("ignore_decorators")
-            if parse_args.get("ignore_decorators") is not None
-            else []
-        )
-        self._ignore_names = (
-            parse_args.get("ignore_names")
-            if parse_args.get("ignore_names") is not None
-            else []
-        )
+        self.cnf_file = CONFIG_FILE_NAME
+        self._exclude = parse_args.get("exclude")
+        self._ignore_decorators = parse_args.get("ignore_decorators")
+        self._ignore_names = parse_args.get("ignore_names")
 
         self.save_to_file()
 
     @property
     def read_form_file(self) -> dict:
-        d = {}
-        if os.path.exists(self.config_file_path):
-            with open(self.config_file_path, "r") as f:
-                for line in f.readlines():
-                    k, v = line.split("=")[0].strip(), line.split("=")[
-                        1
-                    ].strip().rsplit(", ")
-                    d[k] = v
-        return d
+        if os.path.exists(self.cnf_file):
+            return ConfigParser().read(self.cnf_file)[DEFAULT_SECTION]
 
     def save_to_file(self):
-        if os.path.exists(self.config_file_path):
+
+        if os.path.exists(self.cnf_file):
             configs = self.read_form_file
             if configs:
                 kv = {
@@ -62,18 +51,19 @@ class Configs:
                         self._ignore_names + configs.get("ignore_names", [])
                     ),
                 }
-                with open(self.config_file_path, "w") as f:
+                with open(self.cnf_file, "w") as f:
+                    f.write(DEFAULT_SECTION)
                     for k, v in kv.items():
                         f.write(f"{k} = {', '.join(v)}\n")
         else:
-            kv = {
+            cnf = ConfigParser()
+            cnf[DEFAULT_SECTION] = {
                 "exclude": self._exclude,
                 "ignore_decorators": self._ignore_decorators,
                 "ignore_names": self._ignore_names,
             }
-            with open(self.config_file_path, "w+") as f:
-                for k, v in kv.items():
-                    f.write(f"{k} = {', '.join(v)}\n")
+            with open(self.cnf_file, "w") as f:
+                cnf.write(f)
 
     def remove_from_file(self):
         pass
@@ -243,15 +233,18 @@ def _parse_args():
     def csv(exclude):
         return exclude.split(",")
 
-    usage = "%(prog)s [options] PATH [PATH ...]"
-    version = "gadd {}".format(__version__)
-    glob_help = "Patterns may contain glob wildcards (*, ?, [abc], [!abc])."
-    parser = argparse.ArgumentParser(prog="gadd", usage=usage)
+    usage = "%(prog)s command [options] PATH [PATH ...]"
+    version = f"gadd {__version__}"
+    glob_help = (
+        "Patterns for `vulture` may contain glob wildcards (*, ?, [abc], [!abc])."
+    )
+    parser = ArgumentParser(prog="gadd", usage=usage)
 
     parser.add_argument(
         "--exclude",
         metavar="PATTERNS",
         type=csv,
+        default=list(),
         help="Comma-separated list of paths to ignore (e.g.,"
         ' "*settings.py,docs/*.py"). {glob_help} A PATTERN without glob'
         " wildcards is treated as *PATTERN*.".format(**locals()),
@@ -260,6 +253,7 @@ def _parse_args():
         "--ignore-decorators",
         metavar="PATTERNS",
         type=csv,
+        default=list(),
         help="Comma-separated list of decorators. Functions and classes using"
         ' these decorators are ignored (e.g., "@app.route,@require_*").'
         " {glob_help}".format(**locals()),
@@ -268,7 +262,7 @@ def _parse_args():
         "--ignore-names",
         metavar="PATTERNS",
         type=csv,
-        default=None,
+        default=list(),
         help='Comma-separated list of names to ignore (e.g., "visit_*,do_*").'
         " {glob_help}".format(**locals()),
     )

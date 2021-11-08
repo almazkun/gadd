@@ -38,23 +38,23 @@ class Configs:
             return ConfigParser().read(self.cnf_file)[DEFAULT_SECTION]
 
     def save_to_file(self):
-
+        cnf = ConfigParser()
         if os.path.exists(self.cnf_file):
-            configs = self.read_form_file
-            if configs:
-                kv = {
-                    "exclude": set(self._exclude + configs.get("exclude", [])),
+            cnf.read(self.cnf_file)
+            default = cnf[DEFAULT_SECTION]
+            """
+            if default:
+                cnf[DEFAULT_SECTION] = {
+                    "exclude": set(self._exclude + default.get("exclude", [])),
                     "ignore_decorators": set(
-                        self._ignore_decorators + configs.get("ignore_decorators", [])
+                        self._ignore_decorators + default.get("ignore_decorators", [])
                     ),
                     "ignore_names": set(
-                        self._ignore_names + configs.get("ignore_names", [])
+                        self._ignore_names + default.get("ignore_names", [])
                     ),
                 }
-                with open(self.cnf_file, "w") as f:
-                    f.write(DEFAULT_SECTION)
-                    for k, v in kv.items():
-                        f.write(f"{k} = {', '.join(v)}\n")
+            """
+
         else:
             cnf = ConfigParser()
             cnf[DEFAULT_SECTION] = {
@@ -62,8 +62,9 @@ class Configs:
                 "ignore_decorators": self._ignore_decorators,
                 "ignore_names": self._ignore_names,
             }
-            with open(self.cnf_file, "w") as f:
-                cnf.write(f)
+
+        with open(self.cnf_file, "w") as f:
+            cnf.write(f)
 
     def remove_from_file(self):
         pass
@@ -130,43 +131,40 @@ def sort_imports(filename):
     print(out.split(" ")[0])
 
 
-def format_(filename):
-    def _check_flake8(filename):
-        """Same as: `flake8 --config=.flake8 $@`"""
-        print("\tCheking with flake8.")
-        style_guide = flake8.get_style_guide(config=".flake8")
-        report = style_guide.check_files([filename])
-        e = report.get_statistics("E")
-        if e:
-            print("\t\tflake8 errors: ", report.get_statistics("E"))
-        else:
-            print("\t\tflake8 OK!")
-
-    def _check_pylint(filename):
-        """Same as: `pylint --rcfile=.pylintrc -f parseable -r n $@`"""
-        print("\tCheking with pylint.")
-        out, err = StringIO(), StringIO()
-        with redirect_stdout(out), redirect_stderr(err):
-            Run(
-                f"--rcfile=.pylintrc -f parseable -r n {filename}".split(" "),
-                exit=False,
-            )
-        out, err = out.getvalue(), err.getvalue()
-
-        for l in out.split("\n"):
-            if (
-                l
-                and not l.startswith("*")
-                and not l.startswith("-")
-                and not l.startswith("Your code has been rated")
-            ):
-                print(f"\t\t{l}")
-
-    _check_flake8(filename)
-    _check_pylint(filename)
+def check_flake8(filename):
+    """Same as: `flake8 --config=.flake8 $@`"""
+    print("\tCheking with flake8.")
+    style_guide = flake8.get_style_guide(config=".flake8")
+    report = style_guide.check_files([filename])
+    e = report.get_statistics("E")
+    if e:
+        print("\t\tflake8 errors: ", report.get_statistics("E"))
+    else:
+        print("\t\tflake8 OK!")
 
 
-def deadcode(file, configs):
+def check_pylint(filename):
+    """Same as: `pylint --rcfile=.pylintrc -f parseable -r n $@`"""
+    print("\tCheking with pylint.")
+    out, err = StringIO(), StringIO()
+    with redirect_stdout(out), redirect_stderr(err):
+        Run(
+            f"--rcfile=.pylintrc -f parseable -r n {filename}".split(" "),
+            exit=False,
+        )
+    out, err = out.getvalue(), err.getvalue()
+
+    for l in out.split("\n"):
+        if (
+            l
+            and not l.startswith("*")
+            and not l.startswith("-")
+            and not l.startswith("Your code has been rated")
+        ):
+            print(f"\t\t{l}")
+
+
+def run_vulture(file, configs: None):
     """Same as: 
         ```
         vulture file whitelist.py \
@@ -219,8 +217,9 @@ def gadd(file_list, configs: Configs = None):
             print(f"\033[1m{file}\033[0m")
             remove_unused_imports(file)
             sort_imports(file)
-            format_(file)
-            deadcode(file, configs)
+            check_flake8(file)
+            check_pylint(file)
+            run_vulture(file, configs)
             print()
     else:
         print("No staged python files found!\n")
@@ -230,9 +229,6 @@ def gadd(file_list, configs: Configs = None):
 
 
 def _parse_args():
-    def csv(exclude):
-        return exclude.split(",")
-
     usage = "%(prog)s command [options] PATH [PATH ...]"
     version = f"gadd {__version__}"
     glob_help = (
@@ -243,7 +239,6 @@ def _parse_args():
     parser.add_argument(
         "--exclude",
         metavar="PATTERNS",
-        type=csv,
         default=list(),
         help="Comma-separated list of paths to ignore (e.g.,"
         ' "*settings.py,docs/*.py"). {glob_help} A PATTERN without glob'
@@ -252,7 +247,6 @@ def _parse_args():
     parser.add_argument(
         "--ignore-decorators",
         metavar="PATTERNS",
-        type=csv,
         default=list(),
         help="Comma-separated list of decorators. Functions and classes using"
         ' these decorators are ignored (e.g., "@app.route,@require_*").'
@@ -261,14 +255,17 @@ def _parse_args():
     parser.add_argument(
         "--ignore-names",
         metavar="PATTERNS",
-        type=csv,
         default=list(),
         help='Comma-separated list of names to ignore (e.g., "visit_*,do_*").'
         " {glob_help}".format(**locals()),
     )
-    parser.add_argument("--version", action="version", version=version)
+    # parser.add_argument("--version", action="version", version=version)
     return parser.parse_args()
 
 
 if __name__ == "__main__":
-    gadd(file_list=python_staged_files(), configs=Configs(_parse_args()))
+    try:
+        configs = None  # Configs(_parse_args())
+    except:
+        configs = None
+    gadd(file_list=python_staged_files(), configs=configs)

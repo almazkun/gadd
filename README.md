@@ -2,7 +2,7 @@
 Very opinionated formatting python files after git add
 
 # Intent
-I needed a small tool to reformat and lint all the staged `.py` files according to the specific rules. I wanted it to be able to `pip` install it. it is called `gadd` because you run it after `git add` commend.
+I needed a small tool to reformat and lint all the staged `.py` files according to the specific rules. I wanted it to be able to `pip` install it. it is called `gadd` because you run it after `git add` command.
 It will do:
 * Remove unused imports
 * Sort imports

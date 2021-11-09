@@ -28,3 +28,9 @@ user@computer gadd % exa -T .
    ├── __init__.py
    └── test_gadd.py
 ```
+
+# TODO
+* [ ] isort `std` capture
+* [ ] load from `.conf` file
+* [ ] publish to pip
+* [ ] create `std` capture wrapper

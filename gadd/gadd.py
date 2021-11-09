@@ -3,6 +3,7 @@ from argparse import ArgumentParser
 from contextlib import redirect_stderr
 from contextlib import redirect_stdout
 from io import StringIO
+from time import time
 
 import autoflake
 import black
@@ -153,9 +154,12 @@ def gadd_all(file_list):
     print("# Make it PEP8 again! #")
     print("#######################\n")
     if file_list:
+        start = time()
         print(f"Found {len(file_list)} python file(s) staged:\n")
         for filename in file_list:
             gadd(filename)
+        end = time()
+        print(f"Took: {(end - start):.2f} seconds!")
     else:
         print("No staged python files found!\n")
     print("########")
@@ -199,4 +203,5 @@ def _parse_args():
 
 
 if __name__ == "__main__":
+
     gadd_all(file_list=python_staged_files())

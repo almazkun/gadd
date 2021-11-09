@@ -3,6 +3,9 @@ from unittest import TestCase
 
 from gadd.conf import Conf
 
+TEST_CONFIG_FILE_NAME = ".test_gadd"
+TEST_DEFAULT_SECTION = "TEST_GADD"
+
 
 class TestConfigs(TestCase):
     def create_test_conf_file(self):

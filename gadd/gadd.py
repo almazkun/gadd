@@ -1,8 +1,5 @@
-import os
 import sys
 from argparse import ArgumentParser
-from argparse import Namespace
-from configparser import ConfigParser
 from contextlib import redirect_stderr
 from contextlib import redirect_stdout
 from io import StringIO
@@ -16,70 +13,6 @@ from pylint.lint import Run
 from vulture import Vulture
 
 __version__ = "0.1.0"
-
-CONFIG_FILE_NAME = ".gadd"
-DEFAULT_SECTION = "GADD"
-
-
-class Configs:
-    def __init__(self, parse_args: Namespace):
-        # {'exclude': None, 'ignore_decorators': None, 'ignore_names': None}
-        parse_args = vars(parse_args)
-        self.cnf_file = CONFIG_FILE_NAME
-        self._exclude = parse_args.get("exclude")
-        self._ignore_decorators = parse_args.get("ignore_decorators")
-        self._ignore_names = parse_args.get("ignore_names")
-
-        self.save_to_file()
-
-    @property
-    def read_form_file(self) -> dict:
-        if os.path.exists(self.cnf_file):
-            return ConfigParser().read(self.cnf_file)[DEFAULT_SECTION]
-
-    def save_to_file(self):
-        cnf = ConfigParser()
-        if os.path.exists(self.cnf_file):
-            cnf.read(self.cnf_file)
-            default = cnf[DEFAULT_SECTION]
-            """
-            if default:
-                cnf[DEFAULT_SECTION] = {
-                    "exclude": set(self._exclude + default.get("exclude", [])),
-                    "ignore_decorators": set(
-                        self._ignore_decorators + default.get("ignore_decorators", [])
-                    ),
-                    "ignore_names": set(
-                        self._ignore_names + default.get("ignore_names", [])
-                    ),
-                }
-            """
-
-        else:
-            cnf = ConfigParser()
-            cnf[DEFAULT_SECTION] = {
-                "exclude": self._exclude,
-                "ignore_decorators": self._ignore_decorators,
-                "ignore_names": self._ignore_names,
-            }
-
-        with open(self.cnf_file, "w") as f:
-            cnf.write(f)
-
-    def remove_from_file(self):
-        pass
-
-    @property
-    def exclude_paths(self) -> list:
-        return self.read_form_file.get("exclude", [])
-
-    @property
-    def ignore_decorators(self):
-        return self.read_form_file.get("ignore_decorators", [])
-
-    @property
-    def ignore_names(self):
-        return self.read_form_file.get("ignore_names", [])
 
 
 def remove_unused_imports(filename):
@@ -164,7 +97,7 @@ def check_pylint(filename):
             print(f"\t\t{l}")
 
 
-def run_vulture(file, configs: None):
+def run_vulture(filename):
     """Same as: 
         ```
         vulture file whitelist.py \
@@ -176,12 +109,10 @@ def run_vulture(file, configs: None):
         file (str): file name
     """
     print("\tCheking with Vulture.")
-    vulture = Vulture(
-        ignore_names=configs.ignore_names, ignore_decorators=configs.ignore_decorators
-    )
+    vulture = Vulture(ignore_names="", ignore_decorators="")
     vulture.scavenge(
-        [file, "whitelist.py"],
-        exclude=configs.exclude_paths,
+        [filename, "whitelist.py"],
+        exclude="",
     )
 
     out, err = StringIO(), StringIO()
@@ -207,20 +138,24 @@ def python_staged_files():
     return [file for file in staged_files() if file.endswith(".py")]
 
 
-def gadd(file_list, configs: Configs = None):
+def gadd(filename: str) -> None:
+    print(f"\033[1m{filename}\033[0m")
+    remove_unused_imports(filename)
+    sort_imports(filename)
+    check_flake8(filename)
+    check_pylint(filename)
+    run_vulture(filename)
+    print()
+
+
+def gadd_all(file_list):
     print("#######################")
     print("# Make it PEP8 again! #")
     print("#######################\n")
     if file_list:
         print(f"Found {len(file_list)} python file(s) staged:\n")
-        for file in file_list:
-            print(f"\033[1m{file}\033[0m")
-            remove_unused_imports(file)
-            sort_imports(file)
-            check_flake8(file)
-            check_pylint(file)
-            run_vulture(file, configs)
-            print()
+        for filename in file_list:
+            gadd(filename)
     else:
         print("No staged python files found!\n")
     print("########")
@@ -264,8 +199,4 @@ def _parse_args():
 
 
 if __name__ == "__main__":
-    try:
-        configs = None  # Configs(_parse_args())
-    except:
-        configs = None
-    gadd(file_list=python_staged_files(), configs=configs)
+    gadd_all(file_list=python_staged_files())

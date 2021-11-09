@@ -34,3 +34,5 @@ user@computer gadd % exa -T .
 * [ ] load from `.conf` file
 * [ ] publish to pip
 * [ ] create `std` capture wrapper
+* [ ] make it `async`
+* [ ] 

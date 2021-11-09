@@ -83,7 +83,7 @@ def check_pylint(filename):
     out, err = StringIO(), StringIO()
     with redirect_stdout(out), redirect_stderr(err):
         Run(
-            f"--rcfile=.pylintrc -f parseable -r n {filename}".split(" "),
+            f"--rcfile=.pylintrc -f parseable -j 0 -r n {filename}".split(" "),
             exit=False,
         )
     out, err = out.getvalue(), err.getvalue()
@@ -126,45 +126,57 @@ def run_vulture(filename):
             print(f"\t\t{l}")
 
 
-def staged_files():
-    """List of the staged files in this folder/reposetory
+class Gadd:
+    def __init__(self):
+        pass
 
-    Returns:
-        list: list of staged files
-    """
-    return Repo().git.diff("--name-only", "--cached").split("\n")
+    def execute(self) -> None:
+        print("#######################")
+        print("# Make it PEP8 again! #")
+        print("#######################\n")
+        file_list = self._python_staged_files
+        if file_list:
+            start = time()
+            print(f"Found {len(file_list)} python file(s) staged:\n")
+            for filename in file_list:
+                self._run_then_all(filename)
+            end = time()
+            print(f"Took: {(end - start):.2f} seconds!")
+        else:
+            print("No staged python files found!\n")
+        print("########")
+        print("# Exit #")
+        print("########")
 
+    def report(self):
+        pass
 
-def python_staged_files():
-    return [file for file in staged_files() if file.endswith(".py")]
+    def _run_then_all(self, filename: str) -> None:
+        print(f"\033[1m{filename}\033[0m")
+        remove_unused_imports(filename)
+        sort_imports(filename)
+        check_flake8(filename)
+        check_pylint(filename)
+        run_vulture(filename)
+        print()
 
+    @property
+    def _staged_files(self) -> list:
+        """List of the staged files in this folder/reposetory
 
-def gadd(filename: str) -> None:
-    print(f"\033[1m{filename}\033[0m")
-    remove_unused_imports(filename)
-    sort_imports(filename)
-    check_flake8(filename)
-    check_pylint(filename)
-    run_vulture(filename)
-    print()
+        Returns:
+            list: list of staged files
+        """
+        return Repo().git.diff("--name-only", "--cached").split("\n")
 
+    @property
+    def _python_staged_files(self) -> list:
+        """List all the `.py` in staged files
 
-def gadd_all(file_list):
-    print("#######################")
-    print("# Make it PEP8 again! #")
-    print("#######################\n")
-    if file_list:
-        start = time()
-        print(f"Found {len(file_list)} python file(s) staged:\n")
-        for filename in file_list:
-            gadd(filename)
-        end = time()
-        print(f"Took: {(end - start):.2f} seconds!")
-    else:
-        print("No staged python files found!\n")
-    print("########")
-    print("# Exit #")
-    print("########")
+        Returns:
+            list: of files ending .py
+        """
+        return [file for file in self._staged_files if file.endswith(".py")]
 
 
 def _parse_args():
@@ -203,5 +215,4 @@ def _parse_args():
 
 
 if __name__ == "__main__":
-
-    gadd_all(file_list=python_staged_files())
+    Gadd().execute()

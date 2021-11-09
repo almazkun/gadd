@@ -1,5 +1,6 @@
 from argparse import Namespace
 from configparser import ConfigParser
+from os import path
 
 CONFIG_FILE_NAME = ".gadd"
 DEFAULT_SECTION = "GADD"
@@ -21,7 +22,7 @@ class Conf:
 
     @property
     def read_form_file(self) -> dict:
-        if os.path.exists(self.conf_file):
+        if path.exists(self.conf_file):
             return ConfigParser().read(self.conf_file)[self.default_section]
 
     @property
@@ -36,5 +37,6 @@ class Conf:
     def ignore_names(self):
         return self.read_form_file.get("ignore_names")
 
+    @staticmethod
     def combiner(one: str, two: str) -> str:
         return f"{one},{two}"

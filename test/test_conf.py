@@ -18,7 +18,11 @@ class TestConfigs(TestCase):
             ignore_decorators="test_ignore_decorators",
             ignore_names="test_ignore_names",
         )
-        parse_args = Namespace(**t_kwargs)
+        parse_args = Namespace(
+            **t_kwargs,
+            config_file=TEST_CONFIG_FILE_NAME,
+            default_section=TEST_DEFAULT_SECTION
+        )
         conf = Conf(parse_args=parse_args)
 
         self.assertIsInstance(conf, Conf)

@@ -1,5 +1,3 @@
-import sys
-from argparse import ArgumentParser
 from contextlib import redirect_stderr
 from contextlib import redirect_stdout
 from io import StringIO
@@ -25,6 +23,7 @@ def remove_unused_imports(filename):
         filename ([type]): [description]
     """
     print("\tRemoving and sorting imports.")
+    out, err = StringIO(), StringIO()
     isort.file(
         filename,
         **{
@@ -41,9 +40,14 @@ def remove_unused_imports(filename):
             "--remove-all-unused-imports",
             filename,
         ],
-        standard_out=sys.stdout,
-        standard_error=sys.stderr,
+        standard_out=out,
+        standard_error=err,
     )
+    out = out.getvalue()
+    if out:
+        print("\t\t", out)
+    else:
+        print("\t\tautoflake is OK!")
 
 
 def sort_imports(filename):
@@ -60,9 +64,11 @@ def sort_imports(filename):
         except SystemExit as e:
             print(filename, e)
 
-    out, err = out.getvalue(), err.getvalue()
-    print("\t\tReformated:", end=" ")
-    print(out.split(" ")[0])
+    out = out.getvalue()
+    if out:
+        print("\t\tReformated!")
+    else:
+        print("\t\tBlack is OK!")
 
 
 def check_flake8(filename):
@@ -74,7 +80,7 @@ def check_flake8(filename):
     if e:
         print("\t\tflake8 errors: ", report.get_statistics("E"))
     else:
-        print("\t\tflake8 OK!")
+        print("\t\tflake8 is OK!")
 
 
 def check_pylint(filename):
@@ -83,19 +89,26 @@ def check_pylint(filename):
     out, err = StringIO(), StringIO()
     with redirect_stdout(out), redirect_stderr(err):
         Run(
-            f"--rcfile=.pylintrc -f parseable -j 0 -r n {filename}".split(" "),
+            f"--rcfile=.pylintrc -f parseable -r n {filename}".split(" "),
             exit=False,
         )
     out, err = out.getvalue(), err.getvalue()
 
-    for l in out.split("\n"):
+    list_out = [
+        l
+        for l in out.split("\n")
         if (
             l
             and not l.startswith("*")
             and not l.startswith("-")
             and not l.startswith("Your code has been rated")
-        ):
+        )
+    ]
+    if list_out:
+        for l in list_out:
             print(f"\t\t{l}")
+    else:
+        print("\t\tpylint is OK!")
 
 
 def run_vulture(filename):
@@ -119,11 +132,16 @@ def run_vulture(filename):
     out, err = StringIO(), StringIO()
     with redirect_stdout(out), redirect_stderr(err):
         vulture.report()
-    out, err = out.getvalue(), err.getvalue()
+    out = out.getvalue()
 
-    for l in out.split("\n"):
-        if l and not l.startswith("Cheking with Vulture."):
+    list_out = [
+        l for l in out.split("\n") if (l and not l.startswith("Cheking with Vulture."))
+    ]
+    if list_out:
+        for l in list_out:
             print(f"\t\t{l}")
+    else:
+        print("\t\tVulture is OK!")
 
 
 class Gadd:
@@ -131,34 +149,27 @@ class Gadd:
         pass
 
     def execute(self) -> None:
-        print("#######################")
-        print("# Make it PEP8 again! #")
-        print("#######################\n")
+        print("# Gadd: Make it PEP8 again! #")
         file_list = self._python_staged_files
         if file_list:
             start = time()
-            print(f"Found {len(file_list)} python file(s) staged:\n")
-            for filename in file_list:
-                self._run_then_all(filename)
-            end = time()
-            print(f"Took: {(end - start):.2f} seconds!")
+            print(f"Found {len(file_list)} python file(s) staged:")
+            _ = [self._run_then_all(f) for f in file_list]
+            print(f"Took: {(time() - start):.2f} seconds!")
         else:
-            print("No staged python files found!\n")
-        print("########")
+            print("No staged python files found!")
         print("# Exit #")
-        print("########")
-
-    def report(self):
-        pass
 
     def _run_then_all(self, filename: str) -> None:
-        print(f"\033[1m{filename}\033[0m")
-        remove_unused_imports(filename)
-        sort_imports(filename)
-        check_flake8(filename)
-        check_pylint(filename)
-        run_vulture(filename)
-        print()
+        out, err = StringIO(), StringIO()
+        with redirect_stdout(out), redirect_stderr(err):
+            print(f"\033[1m{filename}\033[0m")
+            remove_unused_imports(filename)
+            sort_imports(filename)
+            check_flake8(filename)
+            check_pylint(filename)
+            run_vulture(filename)
+        print(out.getvalue())
 
     @property
     def _staged_files(self) -> list:
@@ -177,41 +188,6 @@ class Gadd:
             list: of files ending .py
         """
         return [file for file in self._staged_files if file.endswith(".py")]
-
-
-def _parse_args():
-    usage = "%(prog)s command [options] PATH [PATH ...]"
-    version = f"gadd {__version__}"
-    glob_help = (
-        "Patterns for `vulture` may contain glob wildcards (*, ?, [abc], [!abc])."
-    )
-    parser = ArgumentParser(prog="gadd", usage=usage)
-
-    parser.add_argument(
-        "--exclude",
-        metavar="PATTERNS",
-        default=list(),
-        help="Comma-separated list of paths to ignore (e.g.,"
-        ' "*settings.py,docs/*.py"). {glob_help} A PATTERN without glob'
-        " wildcards is treated as *PATTERN*.".format(**locals()),
-    )
-    parser.add_argument(
-        "--ignore-decorators",
-        metavar="PATTERNS",
-        default=list(),
-        help="Comma-separated list of decorators. Functions and classes using"
-        ' these decorators are ignored (e.g., "@app.route,@require_*").'
-        " {glob_help}".format(**locals()),
-    )
-    parser.add_argument(
-        "--ignore-names",
-        metavar="PATTERNS",
-        default=list(),
-        help='Comma-separated list of names to ignore (e.g., "visit_*,do_*").'
-        " {glob_help}".format(**locals()),
-    )
-    # parser.add_argument("--version", action="version", version=version)
-    return parser.parse_args()
 
 
 if __name__ == "__main__":

@@ -39,4 +39,45 @@ class Conf:
 
     @staticmethod
     def combiner(one: str, two: str) -> str:
-        return f"{one},{two}"
+        return f"{one},\n{two}"
+
+
+def _parse_args():
+    def csv(exclude):
+        return exclude.split(",")
+
+    usage = "%(prog)s command [options] PATH [PATH ...]"
+    version = f"gadd {__version__}"
+    glob_help = (
+        "Patterns for `vulture` may contain glob wildcards (*, ?, [abc], [!abc])."
+    )
+    parser = ArgumentParser(prog="gadd", usage=usage)
+
+    parser.add_argument(
+        "--exclude",
+        metavar="PATTERNS",
+        type=csv,
+        default=list(),
+        help="Comma-separated list of paths to ignore (e.g.,"
+        ' "*settings.py,docs/*.py"). {glob_help} A PATTERN without glob'
+        " wildcards is treated as *PATTERN*.".format(**locals()),
+    )
+    parser.add_argument(
+        "--ignore-decorators",
+        metavar="PATTERNS",
+        type=csv,
+        default=list(),
+        help="Comma-separated list of decorators. Functions and classes using"
+        ' these decorators are ignored (e.g., "@app.route,@require_*").'
+        " {glob_help}".format(**locals()),
+    )
+    parser.add_argument(
+        "--ignore-names",
+        metavar="PATTERNS",
+        type=csv,
+        default=list(),
+        help='Comma-separated list of names to ignore (e.g., "visit_*,do_*").'
+        " {glob_help}".format(**locals()),
+    )
+    parser.add_argument("--version", action="version", version=version)
+    return parser.parse_args()

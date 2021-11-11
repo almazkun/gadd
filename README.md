@@ -29,10 +29,12 @@ user@computer gadd % exa -T .
    └── test_gadd.py
 ```
 
+# Publish to `pip` with [`poetry`](https://python-poetry.org)
+Make it pip installable with CLI command.
+
+
 # TODO
-* [ ] isort `std` capture
 * [ ] load from `.conf` file
 * [ ] publish to pip
-* [ ] create `std` capture wrapper
 * [ ] make it `async`
 * [ ] 

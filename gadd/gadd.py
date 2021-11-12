@@ -154,7 +154,8 @@ class Gadd:
         if file_list:
             start = time()
             print(f"Found {len(file_list)} python file(s) staged:")
-            _ = [self._run_then_all(f) for f in file_list]
+            for filename in file_list:
+                print(self._run_then_all(filename).getvalue())
             print(f"Took: {(time() - start):.2f} seconds!")
         else:
             print("No staged python files found!")
@@ -169,7 +170,7 @@ class Gadd:
             check_flake8(filename)
             check_pylint(filename)
             run_vulture(filename)
-        print(out.getvalue())
+        return out
 
     @property
     def _staged_files(self) -> list:

@@ -4,17 +4,17 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-gitpython = "*"
-pytest = "*"
-isort = "*"
-autoflake = "*"
-black = "*"
-click = "*"
-flake8 = "*"
-pylint = "*"
-vulture = "*"
+gitpython = "==3.*"
+isort = "==4.*"
+autoflake = "==1.*"
+black = "==20.*"
+flake8 = "==3.*"
+pylint = "==2.*"
+vulture = "==1.*"
 
 [dev-packages]
+pytest = "==4.*"
+
 
 [requires]
 python_version = "3.8"

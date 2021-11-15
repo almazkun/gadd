@@ -12,6 +12,22 @@ It will do:
 
 Obeys `.flake8`, `.pylintrc` and `whitelist.py` config files in the current directory.
 
+# Usage
+* install [`pipx`](https://github.com/pypa/pipx):
+```bash
+python3 -m pip install --user pipx
+python3 -m pipx ensurepath
+```
+* Install [`gadd`](https://pypi.org/project/gadd/) with `pipx`:
+```bash
+pipx install gadd
+```
+* Stage file to test:
+```bash
+git add some_file.py
+gadd
+```
+
 # Tutorial
 This is quick tutorial on hoe to create `pip` installable Python CLI tool.
 

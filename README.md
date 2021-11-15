@@ -66,7 +66,7 @@ classifiers = [
 [tool.poetry.dependencies]
 python = "^3.6"
 autoflake = "^1.4"
-black = "^21.10"
+black = "^21"
 flake8 =  "^4.0"
 gitpython = "^3.1"
 isort =  "^5.10"
@@ -75,9 +75,20 @@ vulture = "^2.3"
 
 [tool.poetry.dev-dependencies]
 
+[tool.poetry.scripts]
+cli_command_name = 'gadd:main'
+
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+```
+* Poetry build wheels:
+```bash 
+poetry build
+```
+* Poetry publish:
+```bash
+poetry publish
 ```
 
 

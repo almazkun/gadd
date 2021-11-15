@@ -190,5 +190,5 @@ class Gadd:
         return [file for file in self._staged_files if file.endswith(".py")]
 
 
-if __name__ == "__main__":
+def main():
     Gadd().execute()

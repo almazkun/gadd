@@ -1,3 +1,4 @@
+import sys
 from contextlib import redirect_stderr
 from contextlib import redirect_stdout
 from io import StringIO
@@ -10,8 +11,6 @@ from flake8.api import legacy as flake8
 from git import Repo
 from pylint.lint import Run
 from vulture import Vulture
-
-__version__ = "0.1.0"
 
 
 def remove_unused_imports(filename):
@@ -40,8 +39,8 @@ def remove_unused_imports(filename):
             "--remove-all-unused-imports",
             filename,
         ],
-        standard_out=out,
-        standard_error=err,
+        standard_out=sys.stdout,
+        standard_error=sys.stderr,
     )
     out = out.getvalue()
     if out:

@@ -18,6 +18,7 @@ class TestConfigs(TestCase):
             ignore_decorators="test_ignore_decorators",
             ignore_names="test_ignore_names",
         )
+
         parse_args = Namespace(
             **t_kwargs,
             config_file=TEST_CONFIG_FILE_NAME,

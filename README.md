@@ -92,7 +92,7 @@ vulture = "^2.3"
 [tool.poetry.dev-dependencies]
 
 [tool.poetry.scripts]
-cli_command_name = 'gadd:main'
+gadd = 'gadd:main'
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "gadd"
-version = "0.2.1"
+version = "0.2.2"
 description = "Sort imports, remove unused imports, run Black, flake8, pylint, vulture in one go for al staged .py files"
 authors = ["Almaz Kunpeissov <hello@akun.dev>"]
 keywords = ["Black", "Sort imports", "analysis", "automation", "autopep8", "code", "flake8", "formatter", "gofmt", "lint", "linter", "pyfmt", "pylint", "python", "remove unused imports", "rustfmt", "static", "vulture", "yapf"]

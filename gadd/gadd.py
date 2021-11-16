@@ -1,6 +1,5 @@
 import sys
-from contextlib import redirect_stderr
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from io import StringIO
 from time import time
 
@@ -13,35 +12,47 @@ from pylint.lint import Run
 from vulture import Vulture
 
 
-def remove_unused_imports(filename):
+def remove_unused_imports(filename: str) -> None:
     """
     isort --recursive --force-single-line-imports --line-width 999 $LOC
     autoflake --recursive --ignore-init-module-imports --in-place --remove-all-unused-imports $LOC
+    isort --recursive --use-parentheses --trailing-comma --multi-line 3 --force-grid-wrap 0 --line-width 88 $LOC
 
     Args:
         filename ([type]): [description]
     """
     print("\tRemoving and sorting imports.")
     out, err = StringIO(), StringIO()
-    isort.file(
-        filename,
-        **{
-            "force_single_line": True,
-            "line_length": 999,
-        },
-    )
-    autoflake._main(
-        argv=[
-            "my_fake_program",
-            "--recursive",
-            "--ignore-init-module-imports",
-            "--in-place",
-            "--remove-all-unused-imports",
+    with redirect_stdout(out), redirect_stderr(err):
+        isort.file(
             filename,
-        ],
-        standard_out=sys.stdout,
-        standard_error=sys.stderr,
-    )
+            **{
+                "force_single_line": True,
+                "line_length": 999,
+            },
+        )
+        autoflake._main(
+            argv=[
+                "my_fake_program",
+                "--recursive",
+                "--ignore-init-module-imports",
+                "--in-place",
+                "--remove-all-unused-imports",
+                filename,
+            ],
+            standard_out=sys.stdout,
+            standard_error=sys.stderr,
+        )
+        isort.file(
+            filename,
+            **{
+                "use_parentheses": True,
+                "include_trailing_comma": True,
+                "multi_line_output": 3,
+                "force_grid_wrap": 0,
+                "line_length": 88,
+            },
+        )
     out = out.getvalue()
     if out:
         print("\t\t", out)
@@ -49,7 +60,7 @@ def remove_unused_imports(filename):
         print("\t\tautoflake is OK!")
 
 
-def sort_imports(filename):
+def sort_imports(filename: str) -> None:
     """black filename
 
     Args:
@@ -70,7 +81,7 @@ def sort_imports(filename):
         print("\t\tBlack is OK!")
 
 
-def check_flake8(filename):
+def check_flake8(filename: str) -> None:
     """Same as: `flake8 --config=.flake8 $@`"""
     print("\tCheking with flake8.")
     style_guide = flake8.get_style_guide(config=".flake8")
@@ -82,7 +93,7 @@ def check_flake8(filename):
         print("\t\tflake8 is OK!")
 
 
-def check_pylint(filename):
+def check_pylint(filename: str) -> None:
     """Same as: `pylint --rcfile=.pylintrc -f parseable -r n $@`"""
     print("\tCheking with pylint.")
     out, err = StringIO(), StringIO()
@@ -110,7 +121,7 @@ def check_pylint(filename):
         print("\t\tpylint is OK!")
 
 
-def run_vulture(filename):
+def run_vulture(filename: str) -> None:
     """Same as: 
         ```
         vulture file whitelist.py \
@@ -144,9 +155,6 @@ def run_vulture(filename):
 
 
 class Gadd:
-    def __init__(self):
-        pass
-
     def execute(self) -> None:
         print("# Gadd: Make it PEP8 again! #")
         file_list = self._python_staged_files

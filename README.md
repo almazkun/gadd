@@ -96,4 +96,9 @@ poetry publish
 # TODO
 * [ ] load from `.conf` file for vulture
 * [ ] make it `async`
-* [ ] 
+* [ ] remove python warnings (PYLINTHOME is now '.cache/pylint' but obsolescent '.pylint.d' is found; you can safely remove the latter)
+* [ ] Fix `isort`s output
+* [ ] handle deleted files (FileNotFoundError: [Errno 2] No such file or directory: 'some_file.py')
+* [ ] handle git.exc.InvalidGitRepositoryError (when not in the root of the project)
+
+
